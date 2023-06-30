@@ -2,7 +2,7 @@
 **P**redatory **R**ecognition and **O**bservation **T**hrough **E**nhanced **C**onversational **T**racking
 
 ## Uses
-This is meant to be a suite of tools to assist anyone investigating matters of Child Sexual Abuse that will grow over time. This suite focuses on providing tools for the monitoring of chat logs that make having predatory conversations with minors more difficult.
+This is meant to be a suite of tools to assist anyone investigating matters of Child Sexual Abuse that will grow over time. This suite focuses on providing tools for the monitoring of chat logs, and interactions that make having predatory conversations with minors more difficult.
 
 ### The tools are as follows
 
