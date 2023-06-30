@@ -1,16 +1,2 @@
 # PROTECT
-P.R.O.T.E.C.T
-
-P - Predatory
-
-R - Recognition
-
-O - Operation
-
-T - Through
-
-E - Enhanced
-
-C - Conversational
-
-T - Tracking
+**P**redatory **R**ecognition and **O**bservation **T**hrough **E**nhanced **C**onversational **T**racking
