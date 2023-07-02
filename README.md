@@ -6,8 +6,11 @@ This is meant to be a suite of tools to assist anyone investigating matters of C
 
 ### The tools are as follows
 
-#### ChatLogs Parser
+#### ChatLogsParser
 It can be used by parents, law enforcement, and other concerned parties to parse chat logs for a list of keywords
 There is a preference JSON file, you can add a list of JSON keywords into that file and the program will parse for those keywords.
 You can also add the comma separated list into the preferences box in the application and it will generate the JSON file for you.
 Preferences Persist across reboots, and chat logs are stored in a folder called chats.
+
+#### ImageMetadataScraper
+This can be used to scrape a page for images. It does not download the images, it only scrapes the page for metadata and stores that metadata to a database for later investigation.
