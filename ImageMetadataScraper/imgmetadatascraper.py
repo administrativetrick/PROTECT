@@ -22,7 +22,7 @@ class Application(tk.Tk):
         self.conn.commit()
 
         # Define GUI components
-        self.tree = ttk.Treeview(self)
+        self.tree = ttk.Treeview(self, show='headings')  # Replace this line
         self.tree["columns"] = ("URL", "Metadata Key", "Metadata Value", "Notes")
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
