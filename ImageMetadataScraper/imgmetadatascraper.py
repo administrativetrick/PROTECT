@@ -15,9 +15,10 @@ class Application(tk.Tk):
         self.title("Website Image Metadata Scraper")
 
         # Initialize database
-        self.conn = sqlite3.connect(':memory:')
+        self.conn = sqlite3.connect('image_metadata.db')
         self.c = self.conn.cursor()
-        self.c.execute("CREATE TABLE images (id INTEGER PRIMARY KEY, url TEXT, width INT, height INT, notes TEXT)")
+        self.c.execute(
+            "CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, url TEXT, width INT, height INT, notes TEXT)")
         self.conn.commit()
 
         # Define GUI components
@@ -44,30 +45,51 @@ class Application(tk.Tk):
         self.button_remove = tk.Button(self, text="Remove", command=self.remove_image)
         self.button_remove.pack()
 
+        # Update the treeview with any existing data from the database
+        self.update_treeview()
+
     def scrape_website(self, url):
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        img_tags = soup.find_all('img')
+        try:
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            img_tags = soup.find_all('img')
 
-        for img in img_tags:
-            img_url = os.path.join(url, img.get('src'))
-            response = requests.get(img_url)
-            img_obj = Image.open(BytesIO(response.content))
+            image_data = []
 
-            self.c.execute("INSERT INTO images (url, width, height) VALUES (?, ?, ?)",
-                           (img_url, img_obj.width, img_obj.height))
-            self.conn.commit()
+            for img in img_tags:
+                img_src = img.get('src')
+                if not img_src:
+                    continue
+
+                img_url = img_src if img_src.startswith('http') else os.path.join(url, img_src)
+                response = requests.get(img_url, stream=True)
+                response.raw.decode_content = True
+
+                try:
+                    img_obj = Image.open(response.raw)
+                    image_data.append((img_url, img_obj.width, img_obj.height))
+                except Exception as e:
+                    print(f"Couldn't open {img_url}: {e}")
+
+            return image_data
+        except Exception as e:
+            print(f"Error while scraping {url}: {e}")
+            return []
 
     def add_image(self):
         url = self.entry_url.get()
         notes = self.entry_notes.get()
 
         try:
-            self.scrape_website(url)
-            self.c.execute("UPDATE images SET notes=? WHERE url=?", (notes, url))
+            image_data = self.scrape_website(url)
+
+            for img_url, width, height in image_data:
+                self.c.execute("INSERT INTO images (url, width, height, notes) VALUES (?, ?, ?, ?)",
+                               (img_url, width, height, notes))
+
             self.conn.commit()
             self.update_treeview()
-            messagebox.showinfo("Success", "Image added successfully.")
+            messagebox.showinfo("Success", "Images added successfully.")
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
@@ -90,12 +112,13 @@ class Application(tk.Tk):
     def remove_image(self):
         selected = self.tree.selection()
         if selected:
-            url = self.tree.set(selected, "URL")
+            urls = [self.tree.set(item, "URL") for item in selected]
             try:
-                self.c.execute("DELETE FROM images WHERE url=?", (url,))
+                for url in urls:
+                    self.c.execute("DELETE FROM images WHERE url=?", (url,))
                 self.conn.commit()
                 self.update_treeview()
-                messagebox.showinfo("Success", "Image removed successfully.")
+                messagebox.showinfo("Success", "Image(s) removed successfully.")
             except Exception as e:
                 messagebox.showerror("Error", str(e))
         else:
