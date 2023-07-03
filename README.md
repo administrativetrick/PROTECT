@@ -19,4 +19,4 @@ This can be used to scrape a page for images. It does not download the images, i
 This can be used to scrape a page for links. It stores the parent URL as a parent and the links on the page as a child.
 
 #### websiteCloner
-This can be used to pull and Dave the HTML from websites. images are intentionally not saved as a part of the clone.
+This can be used to pull and save the HTML from websites. images are intentionally not saved as a part of the clone.
