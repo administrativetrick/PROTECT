@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from bs4 import BeautifulSoup
 import requests
 import sqlite3
+from urllib.parse import urljoin
 
 # Create a database or connect to one
 conn = sqlite3.connect('links.db')
@@ -24,7 +25,8 @@ def scrape_links(source_url):
 
 def add_links_to_db(source, links):
     for link in links:
-        c.execute("INSERT INTO links VALUES (:source, :link)", {'source': source, 'link': link})
+        absolute_link = urljoin(source, link)
+        c.execute("INSERT INTO links VALUES (:source, :link)", {'source': source, 'link': absolute_link})
         conn.commit()
 
 def fetch_links():
@@ -36,12 +38,37 @@ def fetch_links():
     else:
         messagebox.showinfo("Info", "No links found.")
 
+
 def delete_links():
     selected_items = tree.selection()
+    child_items_to_delete = []
+    parent_items_to_delete = []
+
     for selected_item in selected_items:
-        c.execute("DELETE from links WHERE link=?", (tree.item(selected_item)["values"][1],))
-        tree.delete(selected_item)
+        # Get all the children of the selected item
+        children = tree.get_children(selected_item)
+
+        for child in children:
+            # Delete the child item from the database
+            c.execute("DELETE from links WHERE link=?", (tree.item(child)["text"],))
+            # Add the child to the deletion list
+            child_items_to_delete.append(child)
+
+        # Delete the parent item from the database
+        c.execute("DELETE from links WHERE source=?", (tree.item(selected_item)["text"],))
+        # Add the parent to the deletion list
+        parent_items_to_delete.append(selected_item)
+
     conn.commit()
+
+    # Now delete all child items from the treeview
+    for item in child_items_to_delete:
+        tree.delete(item)
+
+    # And then delete all parent items from the treeview
+    for item in parent_items_to_delete:
+        tree.delete(item)
+
 
 def build_tree():
     for i in tree.get_children():
@@ -70,7 +97,6 @@ remove_button.pack()
 tree = ttk.Treeview(root)
 tree.pack(fill=tk.BOTH, expand=1)
 
-root.mainloop()
+build_tree()  # Build tree when application starts
 
-# Close connection
-conn.close()
+root.mainloop()
