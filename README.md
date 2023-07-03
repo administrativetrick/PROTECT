@@ -14,3 +14,6 @@ Preferences Persist across reboots, and chat logs are stored in a folder called 
 
 #### ImageMetadataScraper
 This can be used to scrape a page for images. It does not download the images, it only scrapes the page for metadata and stores that metadata to a database for later investigation.
+
+#### websiteCloner
+This can be used to pull and Dave the HTML from websites. images are intentionally not saved as a part of the clone.
