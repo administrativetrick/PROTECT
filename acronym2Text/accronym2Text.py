@@ -11,7 +11,6 @@ import time
 import sys
 import pyperclip
 
-
 class Acronym2Text:
     def __init__(self, abbreviations_file):
         self.abbreviations_file = abbreviations_file
@@ -28,6 +27,7 @@ class Acronym2Text:
         self.keyboard_controller = Controller()
         self.last_key_press_time = time.time()
         self.last_shown_acronym = None
+        self.is_autocomplete_active = True
 
     def add_abbreviation(self, abbreviation, expansion):
         self.abbreviations[abbreviation.lower()] = expansion
@@ -44,27 +44,28 @@ class Acronym2Text:
             json.dump(data, file, indent=4)
 
     def on_press(self, key):
-        try:
-            if time.time() - self.last_key_press_time > 1.0:
-                self.check_buffer(key.char)
-                self.buffer = ''
-            temp_buffer = self.buffer + key.char
-            expansion = self.abbreviations.get(temp_buffer.lower())
-            if expansion:
-                self.buffer = ''
-                for _ in range(len(temp_buffer)):
-                    self.keyboard_controller.press(keyboard.Key.backspace)
-                    self.keyboard_controller.release(keyboard.Key.backspace)
-                self.keyboard_controller.type(expansion)
-            else:
-                self.buffer += key.char
-            self.last_key_press_time = time.time()
-        except AttributeError:
-            if key == keyboard.Key.space or key == keyboard.Key.enter:
-                self.check_buffer('')
-                self.buffer = ''
-            elif key == keyboard.Key.backspace and len(self.buffer) > 0:
-                self.buffer = self.buffer[:-1]
+        if self.is_autocomplete_active:
+            try:
+                if time.time() - self.last_key_press_time > 1.0:
+                    self.check_buffer(key.char)
+                    self.buffer = ''
+                temp_buffer = self.buffer + key.char
+                expansion = self.abbreviations.get(temp_buffer.lower())
+                if expansion:
+                    self.buffer = ''
+                    for _ in range(len(temp_buffer)):
+                        self.keyboard_controller.press(keyboard.Key.backspace)
+                        self.keyboard_controller.release(keyboard.Key.backspace)
+                    self.keyboard_controller.type(expansion)
+                else:
+                    self.buffer += key.char
+                self.last_key_press_time = time.time()
+            except AttributeError:
+                if key == keyboard.Key.space or key == keyboard.Key.enter:
+                    self.check_buffer('')
+                    self.buffer = ''
+                elif key == keyboard.Key.backspace and len(self.buffer) > 0:
+                    self.buffer = self.buffer[:-1]
 
     def check_buffer(self, current_key):
         self.buffer += current_key
@@ -166,5 +167,14 @@ def run_icon():
 
 icon_thread = threading.Thread(target=run_icon)
 icon_thread.start()
+
+def disable_autocomplete(event):
+    acronym2text.is_autocomplete_active = False
+
+def enable_autocomplete(event):
+    acronym2text.is_autocomplete_active = True
+
+abbreviation_entry.bind("<FocusIn>", disable_autocomplete)
+abbreviation_entry.bind("<FocusOut>", enable_autocomplete)
 
 root.mainloop()
