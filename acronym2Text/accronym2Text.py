@@ -1,4 +1,4 @@
-from tkinter import messagebox
+from tkinter import messagebox, Menu
 import pystray
 from PIL import Image
 import os
@@ -9,6 +9,7 @@ from pynput import keyboard
 from pynput.keyboard import Controller
 import time
 import sys
+import pyperclip
 
 
 class Acronym2Text:
@@ -16,12 +17,17 @@ class Acronym2Text:
         self.abbreviations_file = abbreviations_file
         if os.path.exists(self.abbreviations_file):
             with open(self.abbreviations_file, 'r') as file:
-                self.abbreviations = json.load(file)
+                data = json.load(file)
+                if "acronyms" in data:
+                    self.abbreviations = {acronym["abbreviation"].lower(): acronym["explanation"] for acronym in data["acronyms"]}
+                else:
+                    self.abbreviations = {}
         else:
             self.abbreviations = {}
         self.buffer = ''
         self.keyboard_controller = Controller()
         self.last_key_press_time = time.time()
+        self.last_shown_acronym = None
 
     def add_abbreviation(self, abbreviation, expansion):
         self.abbreviations[abbreviation.lower()] = expansion
@@ -32,8 +38,10 @@ class Acronym2Text:
         self.save_abbreviations()
 
     def save_abbreviations(self):
+        acronyms = [{"abbreviation": abbr, "explanation": exp} for abbr, exp in self.abbreviations.items()]
+        data = {"acronyms": acronyms}
         with open(self.abbreviations_file, 'w') as file:
-            json.dump(self.abbreviations, file)
+            json.dump(data, file, indent=4)
 
     def on_press(self, key):
         try:
@@ -59,20 +67,31 @@ class Acronym2Text:
                 self.buffer = self.buffer[:-1]
 
     def check_buffer(self, current_key):
-        if len(self.buffer) > 0 and current_key.lower() == self.buffer[-1].lower():
-            self.buffer += current_key
-        else:
-            expansion = self.abbreviations.get(self.buffer.lower())
-            if expansion:
-                for _ in range(len(self.buffer)):
-                    self.keyboard_controller.press(keyboard.Key.backspace)
-                    self.keyboard_controller.release(keyboard.Key.backspace)
-                self.keyboard_controller.type(expansion)
-            self.buffer = current_key
+        self.buffer += current_key
+        expansion = self.abbreviations.get(self.buffer.lower())
+        if expansion:
+            for _ in range(len(self.buffer)):
+                self.keyboard_controller.press(keyboard.Key.backspace)
+                self.keyboard_controller.release(keyboard.Key.backspace)
+            self.keyboard_controller.type(expansion)
 
     def start(self):
         with keyboard.Listener(on_press=self.on_press) as listener:
             listener.join()
+
+    def get_highlighted_text(self):
+        return pyperclip.paste()
+
+    def show_explanation(self, text):
+        expansion = self.abbreviations.get(text.lower())
+        if expansion and text.lower() != self.last_shown_acronym:
+            messagebox.showinfo("Acronym Explanation", f"{text}: {expansion}")
+            self.last_shown_acronym = text.lower()
+
+    def add_to_acronyms(self, text):
+        if text not in self.abbreviations.values():
+            # Add the text to the acronym list
+            self.add_abbreviation(text.lower(), '')
 
 abbreviations_file = 'preferences.json'
 acronym2text = Acronym2Text(abbreviations_file)
@@ -99,6 +118,16 @@ remove_button.pack()
 keyboard_listener_thread = threading.Thread(target=acronym2text.start)
 keyboard_listener_thread.start()
 
+def check_highlighted_text():
+    while True:
+        highlighted_text = acronym2text.get_highlighted_text()
+        if highlighted_text:
+            acronym2text.show_explanation(highlighted_text)
+        time.sleep(0.5)
+
+highlighted_text_thread = threading.Thread(target=check_highlighted_text)
+highlighted_text_thread.start()
+
 # Create an empty icon
 icon = Image.new('1', (64, 64), color=0)
 
@@ -118,7 +147,16 @@ def hide_window():
 def show_window(icon, item):
     root.after(0, root.deiconify)
 
-menu = (pystray.MenuItem('Show', show_window), pystray.MenuItem('Quit', exit_action))
+def add_to_acronyms_menu():
+    highlighted_text = acronym2text.get_highlighted_text()
+    if highlighted_text and highlighted_text.lower() not in acronym2text.abbreviations:
+        acronym2text.add_to_acronyms(highlighted_text)
+
+menu = (
+    pystray.MenuItem('Show', show_window),
+    pystray.MenuItem('Quit', exit_action),
+    pystray.MenuItem('Add to Acronyms', add_to_acronyms_menu)
+)
 sys_tray_icon = pystray.Icon("name", icon, "Acronym2Text", menu)
 
 root.protocol('WM_DELETE_WINDOW', hide_window)
