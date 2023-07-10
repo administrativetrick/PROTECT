@@ -27,7 +27,11 @@ class Acronym2Text:
         self.keyboard_controller = Controller()
         self.last_key_press_time = time.time()
         self.last_shown_acronym = None
-        self.is_autocomplete_active = True
+        self.listener = None
+        self.abbreviation_entry = None
+
+    def set_abbreviation_entry(self, abbreviation_entry):
+        self.abbreviation_entry = abbreviation_entry
 
     def add_abbreviation(self, abbreviation, expansion):
         self.abbreviations[abbreviation.lower()] = expansion
@@ -44,28 +48,29 @@ class Acronym2Text:
             json.dump(data, file, indent=4)
 
     def on_press(self, key):
-        if self.is_autocomplete_active:
-            try:
-                if time.time() - self.last_key_press_time > 1.0:
-                    self.check_buffer(key.char)
-                    self.buffer = ''
-                temp_buffer = self.buffer + key.char
-                expansion = self.abbreviations.get(temp_buffer.lower())
-                if expansion:
-                    self.buffer = ''
-                    for _ in range(len(temp_buffer)):
-                        self.keyboard_controller.press(keyboard.Key.backspace)
-                        self.keyboard_controller.release(keyboard.Key.backspace)
-                    self.keyboard_controller.type(expansion)
-                else:
-                    self.buffer += key.char
-                self.last_key_press_time = time.time()
-            except AttributeError:
-                if key == keyboard.Key.space or key == keyboard.Key.enter:
-                    self.check_buffer('')
-                    self.buffer = ''
-                elif key == keyboard.Key.backspace and len(self.buffer) > 0:
-                    self.buffer = self.buffer[:-1]
+        try:
+            if time.time() - self.last_key_press_time > 1.0:
+                self.check_buffer(key.char)
+                self.buffer = ''
+            if self.abbreviation_entry and self.abbreviation_entry.focus_get():
+                return
+            temp_buffer = self.buffer + key.char
+            expansion = self.abbreviations.get(temp_buffer.lower())
+            if expansion:
+                self.buffer = ''
+                for _ in range(len(temp_buffer)):
+                    self.keyboard_controller.press(keyboard.Key.backspace)
+                    self.keyboard_controller.release(keyboard.Key.backspace)
+                self.keyboard_controller.type(expansion)
+            else:
+                self.buffer += key.char
+            self.last_key_press_time = time.time()
+        except AttributeError:
+            if key == keyboard.Key.space or key == keyboard.Key.enter:
+                self.check_buffer('')
+                self.buffer = ''
+            elif key == keyboard.Key.backspace and len(self.buffer) > 0:
+                self.buffer = self.buffer[:-1]
 
     def check_buffer(self, current_key):
         self.buffer += current_key
@@ -77,8 +82,13 @@ class Acronym2Text:
             self.keyboard_controller.type(expansion)
 
     def start(self):
-        with keyboard.Listener(on_press=self.on_press) as listener:
-            listener.join()
+        self.listener = keyboard.Listener(on_press=self.on_press)
+        self.listener.start()
+
+    def stop(self):
+        if self.listener:
+            self.listener.stop()
+            self.listener = None
 
     def get_highlighted_text(self):
         return pyperclip.paste()
@@ -115,6 +125,18 @@ add_button.pack()
 
 remove_button = tk.Button(root, text="Remove Abbreviation", command=lambda: acronym2text.remove_abbreviation(abbreviation_entry.get()))
 remove_button.pack()
+
+# Listener On/Off toggle button
+def toggle_listener():
+    if acronym2text.listener and acronym2text.listener.running:
+        acronym2text.stop()
+        toggle_listener_button.config(text="Start Listener")
+    else:
+        acronym2text.start()
+        toggle_listener_button.config(text="Stop Listener")
+
+toggle_listener_button = tk.Button(root, text="Stop Listener", command=toggle_listener)
+toggle_listener_button.pack()
 
 keyboard_listener_thread = threading.Thread(target=acronym2text.start)
 keyboard_listener_thread.start()
