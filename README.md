@@ -22,6 +22,6 @@ This can be used to scrape a page for links. It stores the parent URL as a paren
 This can be used to pull and save the HTML from websites. images are intentionally not saved as a part of the clone.
 
 #### acronym2Text
-This program monitors your keyboard input, if it matches an acronym or shortcut of letters that you have given it, it will type the long form version of that text that you provide. When you copy a word in the list while the program is running it will provvide a pop-up window with an explanation of the term you copied. You can use the preferences.json file included, or you can create your own.
+This program monitors your keyboard input, if it matches an acronym or shortcut of letters that you have given it, it will type the long form version of that text that you provide. When you copy a word in the list while the program is running it will provide a pop-up window with an explanation of the term you copied. You can use the preferences.json file included, or you can create your own.
 
 Note: As a requirement for a program like acronym2Text to work, it monitors your keystrokes. If you are uncomfortable with that, do not run this program. The other modules above do not include this type of behaviour unless otherwise mentioned.
