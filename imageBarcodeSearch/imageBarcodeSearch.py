@@ -34,8 +34,6 @@ def view_all_db():
     for row in all_rows:
         print(row)
 
-view_all_db()
-
 def remove_from_db(data):
     print(f"Data: {data}, Type: {type(data)}")
     conn, c = connect_to_db()
@@ -53,15 +51,26 @@ def remove_from_db(data):
 
 
 
+def normalize_barcode(data):
+    # EAN/UPC retail codes are numeric and conventionally 13 digits, so pad
+    # those. Leave non-numeric payloads (e.g. a QR code holding a URL or text)
+    # untouched; zfill(13) would otherwise corrupt them into "0https://...".
+    return data.zfill(13) if data.isdigit() else data
+
+
 def find_barcodes_in_image(file_path, treeview):
     img = cv2.imread(file_path)
+    if img is None:
+        # cv2.imread returns None for a missing/unsupported/corrupt file;
+        # passing None to decode() would raise and crash the handler.
+        print(f"Could not read image: {file_path}")
+        return
     barcodes = decode(img)
     if not barcodes:
         print("No barcodes found")
     else:
         for barcode in barcodes:
-            # Decode the barcode data and add leading zeros if necessary to ensure 13 digits
-            barcode_data = barcode.data.decode('utf-8').zfill(13)
+            barcode_data = normalize_barcode(barcode.data.decode('utf-8'))
             treeview.insert('', 'end', values=(barcode_data,))
             save_to_db(barcode_data)
 
@@ -76,8 +85,8 @@ def remove_item(treeview):
     if selected_items:
         selected_item = selected_items[0]
         data = treeview.item(selected_item)['values'][0]
-        # Pad the data with leading zeros to make it 13 digits long
-        data_padded = str(data).zfill(13)
+        # Normalize the same way values were stored so the lookup matches.
+        data_padded = normalize_barcode(str(data))
         remove_from_db((data_padded,))
         treeview.delete(selected_item)
     else:

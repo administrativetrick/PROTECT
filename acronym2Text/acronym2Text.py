@@ -1,4 +1,4 @@
-from tkinter import messagebox, Menu
+from tkinter import messagebox
 import pystray
 from PIL import Image
 import os
@@ -8,7 +8,6 @@ import tkinter as tk
 from pynput import keyboard
 from pynput.keyboard import Controller
 import time
-import sys
 import pyperclip
 
 class Acronym2Text:
@@ -48,29 +47,36 @@ class Acronym2Text:
             json.dump(data, file, indent=4)
 
     def on_press(self, key):
-        try:
-            if time.time() - self.last_key_press_time > 1.0:
-                self.check_buffer(key.char)
-                self.buffer = ''
-            if self.abbreviation_entry and self.abbreviation_entry.focus_get():
-                return
-            temp_buffer = self.buffer + key.char
-            expansion = self.abbreviations.get(temp_buffer.lower())
-            if expansion:
-                self.buffer = ''
-                for _ in range(len(temp_buffer)):
-                    self.keyboard_controller.press(keyboard.Key.backspace)
-                    self.keyboard_controller.release(keyboard.Key.backspace)
-                self.keyboard_controller.type(expansion)
-            else:
-                self.buffer += key.char
-            self.last_key_press_time = time.time()
-        except AttributeError:
+        # key.char is only present for printable keys. Modifier and some media
+        # keys either lack the attribute or set it to None; the old code did
+        # "self.buffer + key.char", which raised an uncaught TypeError on the
+        # None case and silently killed the listener thread. Resolve the
+        # character defensively and handle the non-printable case first.
+        char = getattr(key, 'char', None)
+        if char is None:
             if key == keyboard.Key.space or key == keyboard.Key.enter:
                 self.check_buffer('')
                 self.buffer = ''
             elif key == keyboard.Key.backspace and len(self.buffer) > 0:
                 self.buffer = self.buffer[:-1]
+            return
+
+        if time.time() - self.last_key_press_time > 1.0:
+            self.check_buffer(char)
+            self.buffer = ''
+        if self.abbreviation_entry and self.abbreviation_entry.focus_get():
+            return
+        temp_buffer = self.buffer + char
+        expansion = self.abbreviations.get(temp_buffer.lower())
+        if expansion:
+            self.buffer = ''
+            for _ in range(len(temp_buffer)):
+                self.keyboard_controller.press(keyboard.Key.backspace)
+                self.keyboard_controller.release(keyboard.Key.backspace)
+            self.keyboard_controller.type(expansion)
+        else:
+            self.buffer += char
+        self.last_key_press_time = time.time()
 
     def check_buffer(self, current_key):
         self.buffer += current_key
@@ -138,31 +144,34 @@ def toggle_listener():
 toggle_listener_button = tk.Button(root, text="Stop Listener", command=toggle_listener)
 toggle_listener_button.pack()
 
-keyboard_listener_thread = threading.Thread(target=acronym2text.start)
+keyboard_listener_thread = threading.Thread(target=acronym2text.start, daemon=True)
 keyboard_listener_thread.start()
 
 def check_highlighted_text():
     while True:
         highlighted_text = acronym2text.get_highlighted_text()
         if highlighted_text:
-            acronym2text.show_explanation(highlighted_text)
+            # Tkinter is not thread-safe. Marshal the popup onto the main
+            # thread via root.after instead of calling messagebox from here,
+            # which otherwise caused intermittent hangs and crashes.
+            root.after(0, acronym2text.show_explanation, highlighted_text)
         time.sleep(0.5)
 
-highlighted_text_thread = threading.Thread(target=check_highlighted_text)
+# Daemon threads so the process can actually exit when the window is closed
+# or Quit is chosen from the tray; the old non-daemon clipboard loop kept the
+# process alive forever.
+highlighted_text_thread = threading.Thread(target=check_highlighted_text, daemon=True)
 highlighted_text_thread.start()
 
 # Create an empty icon
 icon = Image.new('1', (64, 64), color=0)
 
 def exit_action(icon, item):
-    global stop_threads
-    stop_threads = True  # Stop the keyboard listener thread
-    root.quit()  # Stop the tkinter mainloop
+    acronym2text.stop()  # Stop the keyboard listener
     icon.stop()  # Stop the pystray icon
-    try:
-        sys.exit()  # Exit the program
-    except SystemExit:
-        pass
+    # root.quit must run on the main thread; this callback fires on the
+    # pystray thread, so schedule it rather than calling Tk directly here.
+    root.after(0, root.quit)
 
 def hide_window():
     root.withdraw()
@@ -187,7 +196,7 @@ root.protocol('WM_DELETE_WINDOW', hide_window)
 def run_icon():
     sys_tray_icon.run()
 
-icon_thread = threading.Thread(target=run_icon)
+icon_thread = threading.Thread(target=run_icon, daemon=True)
 icon_thread.start()
 
 def disable_autocomplete(event):

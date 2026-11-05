@@ -1,4 +1,5 @@
 import os
+import re
 import webbrowser
 import sqlite3
 import tkinter as tk
@@ -8,6 +9,9 @@ from urllib.request import urlopen
 from tkinter import ttk
 
 DATABASE = 'clone_data.db'
+
+# Timeout so a slow or unresponsive host cannot freeze the GUI indefinitely.
+REQUEST_TIMEOUT = 15
 
 
 class Application(tk.Tk):
@@ -54,16 +58,23 @@ class Application(tk.Tk):
             return
 
         try:
-            html = urlopen(url)
+            html = urlopen(url, timeout=REQUEST_TIMEOUT)
             soup = BeautifulSoup(html, 'html.parser')
 
             if not os.path.isdir('WebsiteClones'):
                 os.makedirs('WebsiteClones')
 
-            filename = url.replace("https://", "").replace("http://", "").replace("/", "_") + '.html'
+            # Replace every character that is unsafe in a filename (not just
+            # "/"), so URLs containing "?", ":", "&", etc. do not produce
+            # paths that are illegal on Windows. Also cap the length.
+            stripped = re.sub(r'^https?://', '', url)
+            safe = re.sub(r'[^A-Za-z0-9._-]', '_', stripped)[:150] or 'clone'
+            filename = safe + '.html'
             path = os.path.join('WebsiteClones', filename)
 
-            with open(path, 'w') as f:
+            # Explicit UTF-8 so non-ASCII pages do not fail on platforms whose
+            # default encoding is not UTF-8 (e.g. Windows).
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write(str(soup.prettify()))
 
             self.cursor.execute(
@@ -83,8 +94,15 @@ class Application(tk.Tk):
             self.tree.insert("", "end", text=row[0], values=(row[1],))
 
     def open_html(self, event):
-        item = self.tree.selection()[0]
-        path = self.tree.item(item, "values")[0]
+        selection = self.tree.selection()
+        if not selection:
+            # Double-clicking empty space yields no selection; the old code
+            # indexed [0] unconditionally and raised IndexError.
+            return
+        values = self.tree.item(selection[0], "values")
+        if not values:
+            return
+        path = values[0]
         webbrowser.open('file://' + os.path.realpath(path))
 
 

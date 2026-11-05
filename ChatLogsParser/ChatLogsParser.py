@@ -100,15 +100,27 @@ class KeywordSearchApp:
 
         for idx, line in enumerate(lines, start=1):
             for keyword in self.keywords:
-                if re.search(r'\b' + keyword + r'\b', line, re.IGNORECASE):
+                if not keyword:
+                    continue
+                # re.escape() treats the keyword as a literal string.
+                # Without it, a keyword containing regex metacharacters
+                # (e.g. "(", "[", "?") raises re.error and the search crashes.
+                if re.search(r'\b' + re.escape(keyword) + r'\b', line, re.IGNORECASE):
                     found_keywords.add(keyword)
                     result_text += f"Keyword '{keyword}' found at line {idx}\n"
 
         if not found_keywords:
             result_text = "Clean\n"
 
-        # Save chat to file
-        chat_file = os.path.join('chats', f'chat_{len(os.listdir("chats")) + 1}.txt')
+        # Save chat to file. Pick the first unused name so that deleting an
+        # earlier chat can never cause a later one to overwrite it (counting
+        # the directory would reuse numbers after a deletion).
+        index = 1
+        while True:
+            chat_file = os.path.join('chats', f'chat_{index}.txt')
+            if not os.path.exists(chat_file):
+                break
+            index += 1
         with open(chat_file, 'w') as file:
             file.write(chat_logs)
 

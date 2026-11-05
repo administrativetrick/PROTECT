@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Generated runtime data (recreated by the tools on first run)
+*.db
+chats/
+WebsiteClones/
+
+# C++ build output
+ChatLogsParser/cpp/build/
+ChatLogsParser/cpp/chatlogparser
+*.o

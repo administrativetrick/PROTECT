@@ -1,12 +1,17 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image, ExifTags
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import simpledialog
 from tkinter import ttk
 import sqlite3
 import pickle
+from urllib.parse import urljoin
+
+# Network requests are given a timeout so a slow or unresponsive host
+# cannot freeze the GUI indefinitely.
+REQUEST_TIMEOUT = 15
 
 
 class Application(tk.Tk):
@@ -57,7 +62,7 @@ class Application(tk.Tk):
 
     def scrape_website(self, url):
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=REQUEST_TIMEOUT)
             soup = BeautifulSoup(response.text, 'html.parser')
             img_tags = soup.find_all('img')
 
@@ -68,8 +73,11 @@ class Application(tk.Tk):
                 if not img_src:
                     continue
 
-                img_url = img_src if img_src.startswith('http') else os.path.join(url, img_src)
-                response = requests.get(img_url, stream=True)
+                # Resolve relative image sources against the page URL.
+                # os.path.join() mangles URLs (and drops the host for
+                # absolute paths like "/img/a.jpg"), so use urljoin().
+                img_url = urljoin(url, img_src)
+                response = requests.get(img_url, stream=True, timeout=REQUEST_TIMEOUT)
                 response.raw.decode_content = True
 
                 try:

@@ -17,11 +17,15 @@ c.execute("""CREATE TABLE IF NOT EXISTS links (
 
 def scrape_links(source_url):
     try:
-        response = requests.get(source_url)
+        # Timeout so a slow host cannot freeze the GUI indefinitely.
+        response = requests.get(source_url, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
         return [a['href'] for a in soup.find_all('a', href=True)]
     except Exception as e:
-        messagebox.showerror("Error", e)
+        # showerror needs a string; passing the exception object raised a
+        # TypeError inside the error handler itself.
+        messagebox.showerror("Error", str(e))
+        return []
 
 def add_links_to_db(source, links):
     for link in links:

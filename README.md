@@ -12,6 +12,8 @@ There is a preference JSON file, you can add a list of JSON keywords into that f
 You can also add the comma separated list into the preferences box in the application and it will generate the JSON file for you.
 Preferences Persist across reboots, and chat logs are stored in a folder called chats.
 
+A dependency-free C++ command-line port of the keyword-scanning engine lives in `ChatLogsParser/cpp/` for scripted or headless batch scanning. See its README for build and usage.
+
 #### ImageMetadataScraper
 This can be used to scrape a page for images. It does not download the images, it only scrapes the page for metadata and stores that metadata to a database for later investigation.
 
