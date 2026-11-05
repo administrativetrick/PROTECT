@@ -26,15 +26,16 @@ This program monitors your keyboard input, if it matches an acronym or shortcut 
 
 Note: As a requirement for a program like acronym2Text to work, it monitors your keystrokes. If you are uncomfortable with that, do not run this program. The other modules above do not include this type of behaviour unless otherwise mentioned.
 
-## C++ command-line ports
+## C++ ports
 
-Each tool above is a Python desktop application. A headless, scriptable C++17
-command-line port of every tool's core logic lives under `<tool>/cpp/`, built
-together with:
+Each tool above is a Python desktop application. Every tool has also been
+reimplemented in C++17 under `<tool>/cpp/`: a **Qt GUI application**
+(`<tool>_gui`) that reproduces the original desktop app, and a **command-line
+program** (`<tool>`) for scripted or headless use. Build the whole suite with:
 
 ```sh
 cmake -B build && cmake --build build
 ```
 
-See [CPP_PORTS.md](CPP_PORTS.md) for per-tool usage, build options, and
+See [CPP_PORTS.md](CPP_PORTS.md) for per-tool details, build options, and
 dependencies.

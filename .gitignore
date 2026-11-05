@@ -19,3 +19,11 @@ linkScraper/cpp/linkscraper
 websiteCloner/cpp/websitecloner
 ImageMetadataScraper/cpp/imgmetadatascraper
 imageBarcodeSearch/cpp/imagebarcodesearch
+
+# Compiled Qt GUI binaries (built from the cpp/ sources)
+ChatLogsParser/cpp/chatlogparser_gui
+acronym2Text/cpp/acronym2text_gui
+linkScraper/cpp/linkscraper_gui
+websiteCloner/cpp/websitecloner_gui
+ImageMetadataScraper/cpp/imgmetadatascraper_gui
+imageBarcodeSearch/cpp/imagebarcodesearch_gui

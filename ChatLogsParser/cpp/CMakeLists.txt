@@ -1,13 +1,23 @@
 cmake_minimum_required(VERSION 3.10)
 project(chatlogparser CXX)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(chatlogparser chatlogparser.cpp)
+find_package(SQLite3 REQUIRED)
 
-if(MSVC)
-  target_compile_options(chatlogparser PRIVATE /W4)
-else()
+add_executable(chatlogparser chatlogparser.cpp)
+if(NOT MSVC)
   target_compile_options(chatlogparser PRIVATE -Wall -Wextra -O2)
+endif()
+
+find_package(Qt5 COMPONENTS Widgets QUIET)
+if(Qt5_FOUND)
+  set(CMAKE_AUTOMOC ON)
+  add_executable(chatlogparser_gui chatlogparser_gui.cpp)
+  target_link_libraries(chatlogparser_gui PRIVATE Qt5::Widgets SQLite::SQLite3)
+  if(NOT MSVC)
+    target_compile_options(chatlogparser_gui PRIVATE -Wall -Wextra -O2)
+  endif()
+else()
+  message(STATUS "Qt5 not found; skipping chatlogparser_gui")
 endif()

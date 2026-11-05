@@ -1,15 +1,17 @@
-# PROTECT C++ command-line ports
+# PROTECT C++ ports
 
-Each tool in this suite is a Python Tkinter desktop application. This directory
-tree also provides a **C++17 command-line port of each tool's core logic**,
-under `<tool>/cpp/`. The ports are headless and scriptable, which suits batch
-or server-side investigation (scanning many exported logs or images at once),
-and they keep the behaviour of the fixed Python versions.
+Every tool in this suite was originally a Python Tkinter desktop application.
+Each one has been reimplemented in C++17:
 
-GUI-only behaviour that cannot be meaningfully represented on the command line
-is intentionally left to the Python apps - specifically acronym2Text's global
-keyboard hook and system-tray integration. Its C++ port provides the portable
-core (the acronym dictionary and text expansion/lookup).
+- a **Qt GUI application** (`<tool>/cpp/<tool>_gui.cpp`) that reproduces the
+  original desktop app - the same windows, widgets and behaviour, backed by the
+  same SQLite databases and file layouts; and
+- a **command-line program** (`<tool>/cpp/<tool>.cpp`) exposing the same core
+  logic for scripted or headless/batch use.
+
+All ports carry the behaviour of the fixed Python versions (literal keyword
+matching, safe filename handling, graceful handling of unreadable images, and
+EAN/UPC-only barcode padding).
 
 ## Building
 
@@ -17,8 +19,11 @@ Whole suite (from the repository root):
 
 ```sh
 cmake -B build && cmake --build build
-# binaries land under build/<tool>/cpp/
 ```
+
+Binaries land under `build/<tool>/cpp/`. GUI targets build only when Qt5 (and,
+for the barcode tool, ZBar/libpng/libjpeg; for acronym2Text, X11 + Xtst) are
+found; otherwise that target is skipped and the CLI still builds.
 
 Any single tool, standalone:
 
@@ -28,77 +33,64 @@ cd <tool>/cpp && cmake -B build && cmake --build build
 
 ## Dependencies
 
-| Tool                    | Needs to build                     | Needs at runtime |
-|-------------------------|------------------------------------|------------------|
-| chatlogparser           | C++17 compiler                     | -                |
-| acronym2text            | C++17 compiler                     | -                |
-| linkscraper             | C++17, SQLite3                     | `curl` binary    |
-| websitecloner           | C++17, SQLite3                     | `curl` binary    |
-| imgmetadatascraper      | C++17, SQLite3                     | `curl` binary    |
-| imagebarcodesearch      | C++17, SQLite3, libpng, libjpeg, ZBar | -             |
+| Component            | Build-time                                   | Runtime        |
+|----------------------|----------------------------------------------|----------------|
+| CLI tools            | C++17; SQLite3 (DB-backed tools)             | `curl` (scrapers) |
+| imagebarcodesearch*  | + libpng, libjpeg, ZBar                       | -              |
+| GUI apps             | + Qt5 Widgets                                 | a display      |
+| acronym2text_gui     | + X11, Xtst (global keyboard hook)            | X11 session    |
 
 On Debian/Ubuntu:
-`sudo apt-get install build-essential cmake libsqlite3-dev libpng-dev libjpeg-dev libzbar-dev curl`
 
-## Tools
+```sh
+sudo apt-get install build-essential cmake \
+  qtbase5-dev libsqlite3-dev libpng-dev libjpeg-dev libzbar-dev \
+  libx11-dev libxtst-dev curl
+```
 
-### chatlogparser
-Scans a chat log for whole-word, case-insensitive keyword matches. Keywords are
-treated as literal text (regex-escaped), so metacharacters never crash it.
+## GUI applications
+
+Each `<tool>_gui` is the C++/Qt replacement for the Python Tkinter app:
+
+- **chatlogparser_gui** - chat-log text area, Submit/Preferences, results
+  table, Add/Remove; writes `chats/` and `keyword_results.db`. Keywords are
+  matched as literal whole words, so metacharacters can't crash the scan.
+- **acronym2text_gui** - add/remove abbreviations, toggle the listener, system
+  tray (Show/Quit), clipboard-triggered explanation popups, and a global
+  keyboard hook (X11 RECORD + XTEST) that expands a typed abbreviation into its
+  full text. The hook needs an X11 session with the RECORD and XTEST
+  extensions (as the Python pynput version needs an active desktop); it
+  degrades to a no-op if they're unavailable.
+- **linkscraper_gui** - enter a source URL, Add to scrape and store its links
+  in a tree grouped by source, Remove to delete a source or a single link.
+- **websitecloner_gui** - Clone saves a page's HTML under `WebsiteClones/`
+  (images not downloaded); double-click a row to open the saved file.
+- **imgmetadatascraper_gui** - URL/Notes/Filter fields and Add/Edit/Remove/
+  Filter; records image format and dimensions per `<img>`.
+- **imagebarcodesearch_gui** - Browse to a JPEG/PNG, decode barcodes/QR with
+  ZBar, list and store them, Remove selected.
+
+## Command-line programs
+
+The CLI equivalents are useful for scripting and batch work.
 
 ```sh
 chatlogparser --prefs ../preferences.json chat.txt
-cat chat.txt | chatlogparser --keywords "meet, irl, asl"
-```
-
-### acronym2text
-Loads the shared `preferences.json` acronym dictionary and either lists it,
-explains one term, or expands every acronym found in a block of text.
-
-```sh
-acronym2text --prefs ../preferences.json --list
 acronym2text --prefs ../preferences.json --explain ASL
-echo "hey asl? pos right now" | acronym2text --prefs ../preferences.json
-```
-
-### linkscraper
-Fetches a page, extracts every `<a href>`, resolves it to an absolute URL, and
-stores (source, link) rows in SQLite.
-
-```sh
 linkscraper scrape https://example.com --db links.db
-linkscraper list --db links.db
-```
-
-### websitecloner
-Saves a page's HTML under `WebsiteClones/` (images are intentionally not
-downloaded) and records the path in SQLite. Filenames are sanitised and output
-is UTF-8.
-
-```sh
 websitecloner clone https://example.com --db clone_data.db
-websitecloner list --db clone_data.db
-```
-
-### imgmetadatascraper
-Scrapes a page for `<img>` tags, fetches each image, and records its format and
-pixel dimensions (read from the file header) in SQLite. The images themselves
-are not kept. Extracting embedded EXIF tags (e.g. GPS) would additionally
-require libexif and is not performed by this port.
-
-```sh
-imgmetadatascraper scrape https://example.com --notes "case 42" --db image_metadata.db
-imgmetadatascraper list --db image_metadata.db
-imgmetadatascraper filter example --db image_metadata.db
-```
-
-### imagebarcodesearch
-Decodes barcodes/QR codes from a JPEG or PNG image using ZBar and stores the
-results in SQLite. Only numeric EAN/UPC payloads are zero-padded to 13 digits;
-other payloads (e.g. a QR code holding a URL) are stored verbatim.
-
-```sh
+imgmetadatascraper scrape https://example.com --db image_metadata.db
 imagebarcodesearch scan photo.png --db barcodes.db
-imagebarcodesearch list --db barcodes.db
-imagebarcodesearch remove 0012345678905 --db barcodes.db
 ```
+
+Run any CLI with `-h`/`--help` (or no arguments) for its full usage.
+
+## Notes and limitations
+
+- The scrapers extract links/images with regular expressions rather than a full
+  HTML parser, and perform HTTP by invoking the system `curl` binary.
+- `imgmetadatascraper` records image format and pixel dimensions (read from the
+  file header). Extracting embedded EXIF tags (e.g. GPS) would additionally
+  require libexif and is not performed.
+- The acronym2Text global keyboard hook is inherently platform-specific; the
+  X11 implementation here targets Linux desktops.
