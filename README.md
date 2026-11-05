@@ -26,12 +26,23 @@ This program monitors your keyboard input, if it matches an acronym or shortcut 
 
 Note: As a requirement for a program like acronym2Text to work, it monitors your keystrokes. If you are uncomfortable with that, do not run this program. The other modules above do not include this type of behaviour unless otherwise mentioned.
 
+## Tauri + Rust app (recommended)
+
+The suite has been reimplemented as a single cross-platform desktop
+application with a modern UI: a TypeScript/Vite frontend and a Rust backend via
+Tauri, under [`tauri/`](tauri/). It unifies all six tools behind one sleek
+sidebar. See [tauri/README.md](tauri/README.md) to build and run it.
+
+```sh
+cd tauri && npm install && npm run tauri dev
+```
+
 ## C++ ports
 
-Each tool above is a Python desktop application. Every tool has also been
-reimplemented in C++17 under `<tool>/cpp/`: a **Qt GUI application**
-(`<tool>_gui`) that reproduces the original desktop app, and a **command-line
-program** (`<tool>`) for scripted or headless use. Build the whole suite with:
+Each tool is also available in C++17 under `<tool>/cpp/`: a **Qt GUI
+application** (`<tool>_gui`) that reproduces the original Tkinter app, and a
+**command-line program** (`<tool>`) for scripted or headless use. Build the
+whole C++ suite with:
 
 ```sh
 cmake -B build && cmake --build build
