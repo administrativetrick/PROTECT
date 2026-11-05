@@ -12,8 +12,6 @@ There is a preference JSON file, you can add a list of JSON keywords into that f
 You can also add the comma separated list into the preferences box in the application and it will generate the JSON file for you.
 Preferences Persist across reboots, and chat logs are stored in a folder called chats.
 
-A dependency-free C++ command-line port of the keyword-scanning engine lives in `ChatLogsParser/cpp/` for scripted or headless batch scanning. See its README for build and usage.
-
 #### ImageMetadataScraper
 This can be used to scrape a page for images. It does not download the images, it only scrapes the page for metadata and stores that metadata to a database for later investigation.
 
@@ -27,3 +25,16 @@ This can be used to pull and save the HTML from websites. images are intentional
 This program monitors your keyboard input, if it matches an acronym or shortcut of letters that you have given it, it will type the long form version of that text that you provide. When you copy a word in the list while the program is running it will provide a pop-up window with an explanation of the term you copied. You can use the preferences.json file included, or you can create your own.
 
 Note: As a requirement for a program like acronym2Text to work, it monitors your keystrokes. If you are uncomfortable with that, do not run this program. The other modules above do not include this type of behaviour unless otherwise mentioned.
+
+## C++ command-line ports
+
+Each tool above is a Python desktop application. A headless, scriptable C++17
+command-line port of every tool's core logic lives under `<tool>/cpp/`, built
+together with:
+
+```sh
+cmake -B build && cmake --build build
+```
+
+See [CPP_PORTS.md](CPP_PORTS.md) for per-tool usage, build options, and
+dependencies.

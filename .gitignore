@@ -8,6 +8,14 @@ chats/
 WebsiteClones/
 
 # C++ build output
-ChatLogsParser/cpp/build/
-ChatLogsParser/cpp/chatlogparser
+build/
+*/cpp/build/
 *.o
+
+# Compiled CLI binaries (built from the cpp/ sources)
+ChatLogsParser/cpp/chatlogparser
+acronym2Text/cpp/acronym2text
+linkScraper/cpp/linkscraper
+websiteCloner/cpp/websitecloner
+ImageMetadataScraper/cpp/imgmetadatascraper
+imageBarcodeSearch/cpp/imagebarcodesearch
